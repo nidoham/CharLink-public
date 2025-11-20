@@ -3,6 +3,8 @@ package com.nidoham.charlink.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Primary Brand Colors
+val Primary = Color(0xFFE94560)
+
 val CharLinkRed = Color(0xFFE94560)
 val CharLinkDarkBlue = Color(0xFF0F3460)
 val CharLinkMidBlue = Color(0xFF16213E)

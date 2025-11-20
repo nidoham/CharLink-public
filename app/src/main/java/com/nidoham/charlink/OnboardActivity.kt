@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,13 +21,11 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -45,7 +42,10 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.database.FirebaseDatabase
+import com.nidoham.charlink.model.User
 
 class OnboardActivity : ComponentActivity() {
 
@@ -72,21 +72,19 @@ class OnboardActivity : ComponentActivity() {
         auth = FirebaseAuth.getInstance()
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestIdToken(getString(R.string.default_web_client_id)) // string.xml এ আইডি আছে তো?
             .requestEmail()
             .build()
 
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         setContent {
-            // Assuming you have a Theme wrapper, keeping it simple here
             MaterialTheme {
                 OnboardScreen(
                     isLoading = isLoading,
                     onGoogleSignInClick = { signInWithGoogle() },
                     onEmailSignInClick = { email, password ->
-                        // Handle Email Login Here
-                        Toast.makeText(this, "Login with: $email", Toast.LENGTH_SHORT).show()
+                        signInWithEmail(email, password)
                     }
                 )
             }
@@ -99,24 +97,86 @@ class OnboardActivity : ComponentActivity() {
         googleSignInLauncher.launch(signInIntent)
     }
 
+    private fun signInWithEmail(email: String, pass: String) {
+        if(email.isEmpty() || pass.isEmpty()) return
+        isLoading = true
+        auth.signInWithEmailAndPassword(email, pass)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user = auth.currentUser
+                    if (user != null) {
+                        saveUserToDatabase(user)
+                    }
+                } else {
+                    isLoading = false
+                    Toast.makeText(this, "Login Failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
     private fun firebaseAuthWithGoogle(account: GoogleSignInAccount?) {
         val credential = GoogleAuthProvider.getCredential(account?.idToken, null)
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
-                isLoading = false
                 if (task.isSuccessful) {
                     val user = auth.currentUser
-                    Toast.makeText(this, "Welcome ${user?.displayName}!", Toast.LENGTH_SHORT).show()
-                    navigateToMain()
+                    if (user != null) {
+                        saveUserToDatabase(user)
+                    }
                 } else {
+                    isLoading = false
                     Toast.makeText(this, "Authentication failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
     }
 
+    private fun saveUserToDatabase(firebaseUser: FirebaseUser) {
+        val uid = firebaseUser.uid
+        val databaseRef = FirebaseDatabase.getInstance().getReference("users").child(uid)
+
+        databaseRef.get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                // পুরাতন ইউজার: শুধু লাস্ট লগইন আপডেট হবে
+                val updates = hashMapOf<String, Any>(
+                    "lastLogin" to System.currentTimeMillis()
+                )
+                databaseRef.updateChildren(updates).addOnCompleteListener {
+                    navigateToMain()
+                }
+            } else {
+                // নতুন ইউজার: পুরো ডেটা সেভ হবে
+                val newUser = User.fromFirebaseUser(firebaseUser)
+                databaseRef.setValue(newUser).addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        Toast.makeText(this, "Welcome New User!", Toast.LENGTH_SHORT).show()
+                        navigateToMain()
+                    } else {
+                        isLoading = false
+                        Toast.makeText(this, "DB Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }.addOnFailureListener { e ->
+            isLoading = false
+            Toast.makeText(this, "Network Error: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ==========================================
+    // মেইন অ্যাক্টিভিটিতে যাওয়ার ফাংশন (অ্যানিমেশন সহ)
+    // ==========================================
     private fun navigateToMain() {
+        isLoading = false
         val intent = Intent(this, MainActivity::class.java)
+
+        // ব্যাক বাটনে যাতে লগইন পেজে না আসে
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+
         startActivity(intent)
+
+        // এখানে Fade In এবং Fade Out অ্যানিমেশন সেট করা হয়েছে
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+
         finish()
     }
 }
@@ -130,8 +190,6 @@ fun OnboardScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-
-    // Keyboard handling
     val focusManager = LocalFocusManager.current
 
     Box(
@@ -152,12 +210,10 @@ fun OnboardScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // ================= TOP SECTION (Logo & Name) =================
             Spacer(modifier = Modifier.height(40.dp))
 
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher), // Ensure this resource exists
+                painter = painterResource(id = R.drawable.ic_launcher),
                 contentDescription = "CharLink Logo",
                 modifier = Modifier
                     .size(100.dp)
@@ -176,9 +232,6 @@ fun OnboardScreen(
                 letterSpacing = 1.sp
             )
             Spacer(modifier = Modifier.height(40.dp))
-
-
-            // ================= MIDDLE SECTION (Inputs) =================
 
             // Email Input
             OutlinedTextField(
@@ -247,7 +300,6 @@ fun OnboardScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Forgot Password Link (Optional UX improvement)
             Text(
                 text = "Forgot Password?",
                 color = Color.White.copy(alpha = 0.5f),
@@ -259,7 +311,6 @@ fun OnboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Email Sign In Button
             Button(
                 onClick = {
                     focusManager.clearFocus()
@@ -283,7 +334,6 @@ fun OnboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ================= DIVIDER =================
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -300,7 +350,6 @@ fun OnboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ================= BOTTOM SECTION (Google) =================
             GoogleSignInButton(
                 onClick = onGoogleSignInClick,
                 isLoading = isLoading
@@ -308,7 +357,6 @@ fun OnboardScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Terms Text
             Text(
                 text = "By continuing, you agree to our Terms of Service\nand Privacy Policy",
                 fontSize = 12.sp,
@@ -325,12 +373,11 @@ fun GoogleSignInButton(
     onClick: () -> Unit,
     isLoading: Boolean
 ) {
-    // Using a Surface for better elevation and click handling
     Surface(
         onClick = { if(!isLoading) onClick() },
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-        color = Color.Transparent, // Transparent to let background show, or White if preferred
+        color = Color.Transparent,
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
@@ -351,7 +398,7 @@ fun GoogleSignInButton(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_google), // Ensure you have this asset
+                        painter = painterResource(id = R.drawable.ic_google),
                         contentDescription = "Google Logo",
                         modifier = Modifier.size(24.dp)
                     )
