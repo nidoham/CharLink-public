@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "211427177280",
+    "firebase_url": "https://nidoham-8e21a-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "nidoham-8e21a",
+    "storage_bucket": "nidoham-8e21a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:211427177280:android:6d54ba2818c5b282b300a5",
+        "android_client_info": {
+          "package_name": "com.nidoham.charlink"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "211427177280-det334haonse7g19e52ovph2p8julemo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.nidoham.charlink",
+            "certificate_hash": "a136a8027a97ccb03668ba5aed2da8e676be4c2b"
+          }
+        },
+        {
+          "client_id": "211427177280-ecl283bgo7l48hrbi4i358780vcgt02q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClS4wuJXI7oV5vKWhMp3_TUZmRYiY1zZo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "211427177280-ecl283bgo7l48hrbi4i358780vcgt02q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
