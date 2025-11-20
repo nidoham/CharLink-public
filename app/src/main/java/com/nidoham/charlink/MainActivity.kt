@@ -1,5 +1,7 @@
 package com.nidoham.charlink
 
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -154,6 +156,8 @@ fun MainAppStructure() {
 @Composable
 fun DrawerHeader() {
     // Firebase User Data Fetching
+    // Note: This will crash in @Preview unless you add a check or mock data,
+    // but works on a real device if Firebase is initialized.
     val user = FirebaseAuth.getInstance().currentUser
     val userName = user?.displayName ?: "Guest User"
     val userUid = user?.uid ?: "UID: N/A"
@@ -175,8 +179,7 @@ fun DrawerHeader() {
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(photoUrl)
                     .crossfade(true)
-                    // আপনার অ্যাপে থাকা যেকোনো একটি drawable রিসোর্স দিন, যদি লোড না হয়
-                    .placeholder(R.drawable.ic_launcher_foreground)
+                    .placeholder(R.drawable.ic_launcher_foreground) // Ensure this drawable exists
                     .error(R.drawable.ic_launcher_foreground)
                     .build(),
                 contentDescription = "Profile Image",
@@ -226,12 +229,25 @@ fun DrawerBody(items: List<DrawerMenuItem>) {
 
 @Composable
 fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modifier) {
+    // FIXED: Capture context here to use inside the composable
+    val context = LocalContext.current
+
     NavHost(navController = navController, startDestination = Screen.Home.route, modifier = modifier) {
-        composable(Screen.Home.route) { HomeScreen(
-            onCreateClick = {
-                // ✅ Switch Activity Logic
-            }
-        ) }
+        composable(Screen.Home.route) {
+            HomeScreen(
+                onCreateClick = {
+                    // FIXED: Use 'context' instead of 'this'
+                    // Make sure 'CreateCharacterActivity' exists in your project
+                    val intent = Intent(context, CreateCharacterActivity::class.java)
+                    context.startActivity(intent)
+
+                    // FIXED: Cast context to Activity to access overridePendingTransition
+                    if (context is Activity) {
+                        context.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                    }
+                }
+            )
+        }
         composable(Screen.Chat.route) { ChatScreen() }
         composable(Screen.Explore.route) { ExploreScreen() }
         composable(Screen.Profile.route) { ProfileScreen() }

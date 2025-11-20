@@ -11,6 +11,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CharLink">
         <activity
+            android:name=".CreateCharacterActivity"
+            android:exported="false" />
+        <activity
             android:name=".OnboardActivity"
             android:exported="false" />
         <activity
@@ -24,7 +27,7 @@
         </activity>
         <activity
             android:name=".MainActivity"
-            android:exported="false"/>
+            android:exported="false" />
     </application>
 
 </manifest>

@@ -68,6 +68,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Gson for parsing the JSON response
+    implementation("com.google.code.gson:gson:2.10.1")
+
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
     implementation("com.google.firebase:firebase-analytics")
