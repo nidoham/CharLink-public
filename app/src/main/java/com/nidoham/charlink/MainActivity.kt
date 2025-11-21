@@ -36,7 +36,7 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.firebase.auth.FirebaseAuth
-import com.nidoham.charlink.screens.ChatScreen
+import com.nidoham.charlink.screens.MessageScreen
 import com.nidoham.charlink.screens.ExploreScreen
 import com.nidoham.charlink.screens.HomeScreen
 import com.nidoham.charlink.screens.ProfileScreen
@@ -248,7 +248,7 @@ fun NavHostContainer(navController: NavHostController, modifier: Modifier = Modi
                 }
             )
         }
-        composable(Screen.Chat.route) { ChatScreen() }
+        composable(Screen.Chat.route) { MessageScreen() }
         composable(Screen.Explore.route) { ExploreScreen() }
         composable(Screen.Profile.route) { ProfileScreen() }
     }

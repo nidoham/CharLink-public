@@ -1,5 +1,7 @@
 package com.nidoham.charlink.screens
 
+import android.app.Activity
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -11,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubble
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,12 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.nidoham.charlink.ChatActivity
 import com.nidoham.charlink.model.Character
 import com.nidoham.charlink.viewmodel.HomeViewModel
 
@@ -35,6 +38,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
     onCreateClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val characters by viewModel.characters.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
@@ -85,16 +89,35 @@ fun HomeScreen(
                     )
                 }
                 else -> {
-                    // ✅ 2 Columns Grid Layout
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(8.dp), // Reduced outer padding
+                        contentPadding = PaddingValues(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(characters) { character ->
-                            CharacterCard(character = character)
+                            CharacterCard(
+                                character = character,
+                                onClick = {
+                                    // --- Switch Activity Logic ---
+                                    val intent = Intent(context, ChatActivity::class.java).apply {
+                                        // Pass Data to ChatActivity
+                                        putExtra("cid", character.cid)
+                                        putExtra("name", character.name)
+                                        putExtra("photo", character.photoUrl)
+                                    }
+                                    context.startActivity(intent)
+
+                                    // --- Fade In/Out Animation ---
+                                    if (context is Activity) {
+                                        context.overridePendingTransition(
+                                            android.R.anim.fade_in,
+                                            android.R.anim.fade_out
+                                        )
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -103,12 +126,17 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // Required for Card onClick in M3
 @Composable
-fun CharacterCard(character: Character) {
+fun CharacterCard(
+    character: Character,
+    onClick: () -> Unit // Added click callback
+) {
     Card(
+        onClick = onClick, // Handle the click here
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp), // Optimized height for grid
+            .height(280.dp),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -121,7 +149,7 @@ fun CharacterCard(character: Character) {
                 modifier = Modifier.fillMaxSize()
             )
 
-            // 2. Gradient Shadow (Better Text Readability)
+            // 2. Gradient Shadow
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -137,18 +165,18 @@ fun CharacterCard(character: Character) {
                     )
             )
 
-            // 3. Content (Name Left, Chat Count Right)
+            // 3. Content
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(8.dp) // ✅ Minimal Padding (No useless margin)
+                    .padding(8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween, // ✅ Pushes Chip to Right
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Name (Left)
+                    // Name
                     Text(
                         text = character.name,
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -161,10 +189,10 @@ fun CharacterCard(character: Character) {
                         color = Color.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f) // Takes available space
+                        modifier = Modifier.weight(1f)
                     )
 
-                    // ✅ Chat Count Chip (Right Side)
+                    // Chat Count Chip
                     Surface(
                         color = Color.Black.copy(alpha = 0.6f),
                         shape = RoundedCornerShape(6.dp),
@@ -193,7 +221,7 @@ fun CharacterCard(character: Character) {
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // Greeting (Below Name)
+                // Greeting
                 Text(
                     text = character.greeting,
                     style = MaterialTheme.typography.bodySmall,
@@ -238,13 +266,12 @@ fun CategoryFilterRow(
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = if (isCreate) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
                 ),
-                border = null // Remove border for cleaner look
+                border = null
             )
         }
     }
 }
 
-// Helper
 fun formatCount(count: Long): String {
     if (count < 1000) return count.toString()
     val k = count / 1000.0
