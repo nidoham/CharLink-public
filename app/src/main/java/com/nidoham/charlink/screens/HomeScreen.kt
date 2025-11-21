@@ -102,10 +102,10 @@ fun HomeScreen(
                                 onClick = {
                                     // --- Switch Activity Logic ---
                                     val intent = Intent(context, ChatActivity::class.java).apply {
-                                        // Pass Data to ChatActivity
-                                        putExtra("cid", character.cid)
-                                        putExtra("name", character.name)
-                                        putExtra("photo", character.photoUrl)
+                                        
+                                        putExtra(
+                                            "characters", character
+                                        )
                                     }
                                     context.startActivity(intent)
 

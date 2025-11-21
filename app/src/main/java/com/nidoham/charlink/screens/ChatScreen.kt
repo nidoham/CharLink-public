@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.nidoham.charlink.model.Character
 import com.nidoham.charlink.model.Message
 import com.nidoham.charlink.viewmodel.ChatViewModel
 
@@ -97,14 +98,16 @@ fun ChatScreen(
 
     // Get Intent Data
     val intent = (context as? Activity)?.intent
-    val characterId = intent?.getStringExtra("cid") ?: "test_character_id"
-    val name = intent?.getStringExtra("name") ?: "Unknown"
-    val photo = intent?.getStringExtra("photo") ?: ""
+    val character = intent?.getParcelableExtra<Character>("characters")
+
+    val characterId = character?.cid ?: ""
+    val name = character?.name ?: ""
+    val photo = character?.photoUrl ?: ""
+    val persona = character?.persona ?: ""
 
     // 1. Start listening to Firebase when characterId changes
-    // FIX: Changed startListeningToMessages -> startChatWithCharacter
     LaunchedEffect(characterId) {
-        viewModel.startChatWithCharacter(characterId)
+        viewModel.startChatWithCharacter(characterId, persona)
     }
 
     // 2. Observe the StateFlow from ViewModel
@@ -205,10 +208,19 @@ fun MessageList(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp),
+                                .padding(horizontal = 16.dp), // FIX 1: Increased side padding
                             horizontalArrangement = if (message.sentByUser) Arrangement.End else Arrangement.Start
                         ) {
-                            Box(modifier = Modifier.widthIn(max = 300.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .widthIn(max = 320.dp)
+                                    // FIX 2: Added logic to push bubbles away from the opposite side
+                                    // If I sent it, add margin to the left. If they sent it, add margin to the right.
+                                    .padding(
+                                        start = if (message.sentByUser) 48.dp else 0.dp,
+                                        end = if (message.sentByUser) 0.dp else 48.dp
+                                    )
+                            ) {
                                 MessageBubbleOptimized(
                                     message = message,
                                     colors = colors,
@@ -218,11 +230,11 @@ fun MessageList(
                             }
                         }
 
-                        // Spacing between bubbles
+                        // FIX 3: Increased spacing for better separation
                         if (isLastInGroup) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                         } else {
-                            Spacer(modifier = Modifier.height(2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
                 }

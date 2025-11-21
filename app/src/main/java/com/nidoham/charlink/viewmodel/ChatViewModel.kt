@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nidoham.charlink.firebase.MessageHelper
 import com.nidoham.charlink.firebase.ai.GeminiApiHandler
+import com.nidoham.charlink.firebase.prompt.PromptManager
 import com.nidoham.charlink.model.Message
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
@@ -41,6 +42,8 @@ class ChatViewModel : ViewModel() {
     // Job for message listener (to cancel when switching characters)
     private var messageListenerJob: Job? = null
 
+    private lateinit var persona: String
+
     // --------------------------------------------------------
     // INITIALIZATION
     // --------------------------------------------------------
@@ -49,7 +52,9 @@ class ChatViewModel : ViewModel() {
      * Start listening to messages for a specific character
      * Cancels previous listener if exists
      */
-    fun startChatWithCharacter(characterId: String) {
+    fun startChatWithCharacter(characterId: String, persona: String) {
+        this.persona = persona
+
         if (_currentCharacterId.value == characterId) {
             return // Already listening to this character
         }
@@ -175,22 +180,31 @@ class ChatViewModel : ViewModel() {
      * Build conversation context for AI prompt
      * Includes recent message history for better context
      */
+    /**
+     * Build conversation context using PromptManager
+     */
     private fun buildConversationContext(currentMessage: String): String {
-        val recentMessages = _messages.value.take(10).reversed() // Last 10 messages
+        // 1. Get recent messages (e.g., last 10)
+        // Note: Assuming _messages is ordered newest-first, we take 10 then reverse to get chronological order
+        val recentMessages = _messages.value.take(10).reversed()
 
-        val context = StringBuilder()
-        context.append("You are a helpful AI assistant in a chat conversation.\n\n")
-        context.append("Conversation history:\n")
-
-        recentMessages.forEach { msg ->
-            val sender = if (msg.sentByUser) "User" else "AI"
-            context.append("$sender: ${msg.text}\n")
+        // 2. Convert your Message objects to the String format PromptManager expects
+        val formattedHistory = recentMessages.map { msg ->
+            val prefix = if (msg.sentByUser) "User" else "Char" // or use actual character name
+            "$prefix: ${msg.text}"
         }
 
-        context.append("\nUser: $currentMessage\n")
-        context.append("AI: ")
+        // 4. Construct the System Instruction (Base + Persona)
+        val fullSystemInstruction = PromptManager.buildSystemInstruction(persona)
 
-        return context.toString()
+        // 5. Initialize PromptManager
+        val promptManager = PromptManager(
+            systemInstruction = fullSystemInstruction,
+            currentQuery = currentMessage,
+            chatHistory = formattedHistory,
+        )
+
+        return promptManager.buildPrompt()
     }
 
     /**
